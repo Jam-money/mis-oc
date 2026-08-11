@@ -180,11 +180,28 @@ export function useDeleteApplicant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Delete related records first to avoid foreign key conflicts
+      const { error: assessmentError } = await supabase
+        .from("assessments")
+        .delete()
+        .eq("applicant_id", id);
+      
+      if (assessmentError) throw assessmentError;
+
+      const { error: interviewError } = await supabase
+        .from("interviews")
+        .delete()
+        .eq("applicant_id", id);
+      
+      if (interviewError) throw interviewError;
+
+      // Then delete the applicant
       const { error } = await supabase.from("applicants").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["applicants"] });
+      qc.invalidateQueries({ queryKey: ["rankings"] });
       toast.success("Applicant deleted");
     },
     onError: (e) => toast.error(e.message),
