@@ -481,15 +481,30 @@ export default function RankingsPage() {
   const [hrmpsbEvaluators, setHrmpsbEvaluators] = useState<Signatory[]>(DEFAULT_HRMPSB_EVALUATORS);
   const [approvingAuthority, setApprovingAuthority] = useState<Signatory>(DEFAULT_APPROVING_AUTHORITY);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  // Interview date is now a plain editable field (ISO yyyy-mm-dd from <input type="date">).
+  // It defaults to today on first load, but the user can change it to any date they like,
+  // and printing no longer overwrites it.
   const [interviewDate, setInterviewDate] = useState<string>("");
 
-  const formatToday = () =>
-    new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  useEffect(() => {
+    if (!interviewDate) {
+      const today = new Date();
+      const iso = today.toISOString().split("T")[0];
+      setInterviewDate(iso);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const formatInterviewDate = (isoDate: string) => {
+    if (!isoDate) return "";
+    const d = new Date(isoDate + "T00:00:00");
+    if (isNaN(d.getTime())) return isoDate;
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  };
 
   const handlePrint = () => {
-    setInterviewDate(formatToday());
-    // Wait a tick so the state update renders into the print DOM before the print dialog opens
-    setTimeout(() => window.print(), 50);
+    window.print();
   };
 
   // Only apply DB values once, so we don't stomp on the user's typing whenever
@@ -898,11 +913,31 @@ export default function RankingsPage() {
         )}
 
         <div className="no-print" style={{ padding: "12px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1.2fr", gap: "12px" }}>
             <ReadOnlyField label="Office/Service/Division/Unit" value={positionInfo.office} />
             <ReadOnlyField label="Position" value={positionInfo.position} />
             <ReadOnlyField label="Salary Grade" value={positionInfo.salaryGrade} />
             <ReadOnlyField label="No. of Vacant Positions" value={positionInfo.vacantPositions} />
+            <div>
+              <Label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", display: "block", marginBottom: "4px" }}>
+                Interview Date
+              </Label>
+              <input
+                type="date"
+                value={interviewDate}
+                onChange={(e) => setInterviewDate(e.target.value)}
+                style={{
+                  height: "32px",
+                  fontSize: "11px",
+                  padding: "0 10px",
+                  width: "100%",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "6px",
+                  background: "#fff",
+                  color: "#111827",
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -942,7 +977,7 @@ export default function RankingsPage() {
             </div>
             <PrintField value={positionInfo.salaryGrade} label="Salary Grade" flex={1} />
             <PrintField value={positionInfo.vacantPositions} label="No. of Vacant Positions" flex={1} />
-            <PrintField value={interviewDate} label="Interview Date" flex={1.5} />
+            <PrintField value={formatInterviewDate(interviewDate)} label="Interview Date" flex={1.5} />
             <PrintField value="" label="Item No." flex={1.5} />
           </div>
         </div>
